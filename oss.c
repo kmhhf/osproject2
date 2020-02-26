@@ -51,6 +51,8 @@ int main(int argc, char* argv[])
     int totalActive = 0;
     char outputFile[255] = "primeoutput.txt";
     int pidList[activeChildren];
+    FILE *output = NULL;
+    char text[255];
 
     signal(SIGALRM, timer_handler);
     signal(SIGINT, ctrlc_handler);
@@ -109,6 +111,14 @@ int main(int argc, char* argv[])
 
     alarm(200);
 
+    output = fopen(outputFile, "a+");
+    if(output == NULL)
+    {
+        fprintf(stderr, "%s: Error: ", argv[0]);
+        perror("");
+        exit(EXIT_FAILURE);
+    }
+
     key_t sharedClockKey = ftok("oss", 1);
     if(sharedClockKey == -1)
     {
@@ -159,8 +169,6 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    printf("%i\n%i\n", sharedClock->second, sharedClock->nanosecond);
-
     while(totalProcesses < totalChildren)
     {
         sharedClock->nanosecond += 10000;
@@ -191,7 +199,7 @@ int main(int argc, char* argv[])
                 execl("./prime", "prime", processNumber, findPrime, numOfChildren, NULL);
                 fprintf(stderr, "%s: Error: execl failed.", argv[0]);
             }
-            printf("Process %d started at %d seconds and %d nanoseconds\n", processPid, sharedClock->second, sharedClock->nanosecond);
+            fprintf(output, "Process %d started at %d seconds and %d nanoseconds\n", processPid, sharedClock->second, sharedClock->nanosecond);
             pidList[totalActive] = processPid;
             totalProcesses++;
             startNumber = (startNumber + incrementBy);
@@ -204,7 +212,7 @@ int main(int argc, char* argv[])
             childPid = waitpid(-1, NULL, WNOHANG);
             if(childPid > 0)
             {
-                printf("Process %d finished at %d seconds %d nanoseconds\n", childPid, sharedClock->second, sharedClock->nanosecond);
+                fprintf(output, "Process %d finished at %d seconds %d nanoseconds\n", childPid, sharedClock->second, sharedClock->nanosecond);
                 totalActive--;
             }
         }
@@ -215,14 +223,29 @@ int main(int argc, char* argv[])
         childPid = wait();
         if(childPid > 0)
         {
-            printf("Process %d finished at %d seconds %d nanoseconds\n", childPid, sharedClock->second, sharedClock->nanosecond);
+            fprintf(output, "Process %d finished at %d seconds %d nanoseconds\n", childPid, sharedClock->second, sharedClock->nanosecond);
         }
     }
 
     for(i = 0; i < totalChildren; i++)
     {
-        printf("test numbers %d\n", sharedPrime[i]);
+        if(sharedPrime[i] < -1)
+        {
+            fprintf(output, "%d is not prime\n", (sharedPrime[i] - (2 * sharedPrime[i])));
+        }
+        else if(sharedPrime[i] > 0)
+        {
+            fprintf(output, "%d is prime\n", sharedPrime[i]);
+        }
+        else
+        {
+            fprintf(output, "Child timed out\n");
+        }
     }
+
+    fflush(output);
+    fclose(output);
+    output = NULL;
 
     shmdt(sharedClock);
     shmdt(sharedPrime);

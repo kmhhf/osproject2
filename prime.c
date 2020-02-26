@@ -15,6 +15,8 @@ int main(int argc, char* argv[])
 
     struct clock* sharedClock = NULL;
     int totalChildren = atoi(argv[3]);
+    int timer1;
+    int timer2;
 
     key_t sharedClockKey = ftok("oss", 1);
     if(sharedClockKey == -1)
@@ -67,8 +69,36 @@ int main(int argc, char* argv[])
 
     int index = atoi(argv[1]);
     int isPrime = atoi(argv[2]);
-    sharedPrime[index] = isPrime;
-    printf("%i\n%i\n", sharedClock->second, sharedClock->nanosecond);
+    timer1 = sharedClock->nanosecond;
+
+    int check = 0;
+    int i;
+
+    for (i = 2; i <= (isPrime / 2); i++)
+    {
+        timer2 = sharedClock->nanosecond;
+        if(timer2 > (timer1 + 1000000))
+        {
+            sharedPrime[index] = -1;
+            shmdt(sharedClock);
+            shmdt(sharedPrime);
+            exit(EXIT_FAILURE);
+        }
+        if ((isPrime % i) == 0)
+        {
+            check = 1;
+            break;
+        }
+    }
+
+    if (check == 0)
+    {
+        sharedPrime[index] = isPrime;
+    }
+    else
+    {
+        sharedPrime[index] = isPrime - (isPrime * 2);
+    }
 
     shmdt(sharedClock);
     shmdt(sharedPrime);
