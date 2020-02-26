@@ -42,6 +42,7 @@ void ctrlc_handler(int signum)
 int main(int argc, char* argv[])
 {
     int opt;
+    int childPid;
     int totalChildren = 4;
     int activeChildren = 2;
     int startNumber = 1;
@@ -106,7 +107,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    alarm(120);
+    alarm(200);
 
     key_t sharedClockKey = ftok("oss", 1);
     if(sharedClockKey == -1)
@@ -181,19 +182,29 @@ int main(int argc, char* argv[])
 
             if(processPid == 0)
             {
-                execl("./prime", NULL);
+                char processNumber[12];
+                char findPrime[12];
+                char numOfChildren[12];
+                sprintf(numOfChildren, "%d", totalChildren);
+                sprintf(findPrime, "%d", startNumber);
+                sprintf(processNumber, "%d", totalProcesses);
+                execl("./prime", "prime", processNumber, findPrime, numOfChildren, NULL);
                 fprintf(stderr, "%s: Error: execl failed.", argv[0]);
             }
+            printf("Process %d started at %d seconds and %d nanoseconds\n", processPid, sharedClock->second, sharedClock->nanosecond);
             pidList[totalActive] = processPid;
             totalProcesses++;
+            startNumber = (startNumber + incrementBy);
             totalActive++;
         }
 
         int i = 0;
         for(i = 0; i < activeChildren; i++)
         {
-            if (waitpid(-1, NULL, WNOHANG) > 0)
+            childPid = waitpid(-1, NULL, WNOHANG);
+            if(childPid > 0)
             {
+                printf("Process %d finished at %d seconds %d nanoseconds\n", childPid, sharedClock->second, sharedClock->nanosecond);
                 totalActive--;
             }
         }
@@ -201,7 +212,16 @@ int main(int argc, char* argv[])
     int i = 0;
     for(i = 0; i < activeChildren; i++)
     {
-        wait();
+        childPid = wait();
+        if(childPid > 0)
+        {
+            printf("Process %d finished at %d seconds %d nanoseconds\n", childPid, sharedClock->second, sharedClock->nanosecond);
+        }
+    }
+
+    for(i = 0; i < totalChildren; i++)
+    {
+        printf("test numbers %d\n", sharedPrime[i]);
     }
 
     shmdt(sharedClock);
