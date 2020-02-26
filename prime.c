@@ -7,6 +7,7 @@
 
 int main(int argc, char* argv[])
 {
+    //struct for the simulated clock
     struct clock
     {
         int second;
@@ -18,7 +19,7 @@ int main(int argc, char* argv[])
     int timer1;
     int timer2;
 
-    key_t sharedClockKey = ftok("oss", 1);
+    key_t sharedClockKey = ftok("oss", 1);                                  //get the key for the clock shared mem
     if(sharedClockKey == -1)
     {
         fprintf(stderr, "%s: Error: ", argv[0]);
@@ -34,7 +35,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    sharedClock =  shmat(clockShmid, NULL, SHM_RDONLY);
+    sharedClock =  shmat(clockShmid, NULL, SHM_RDONLY);                     //attach to shared mem in read only mode
     if(sharedClock == -1)
     {
         fprintf(stderr, "%s: Error: ", argv[0]);
@@ -42,7 +43,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    key_t sharedPrimeKey = ftok("oss", 2);
+    key_t sharedPrimeKey = ftok("oss", 2);                                          //get the key for the results shared mem
     if(sharedPrimeKey == -1)
     {
         fprintf(stderr, "%s: Error: ", argv[0]);
@@ -58,7 +59,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    int* sharedPrime = (int*) shmat(primeShmid, NULL, 0);
+    int* sharedPrime = (int*) shmat(primeShmid, NULL, 0);                           //connect to the results shared mem
     if(sharedPrime == -1)
     {
         fprintf(stderr, "%s: Error: ", argv[0]);
@@ -74,10 +75,11 @@ int main(int argc, char* argv[])
     int check = 0;
     int i;
 
+    //check if the number is prime and put the result in shared memory
     for (i = 2; i <= (isPrime / 2); i++)
     {
         timer2 = sharedClock->nanosecond;
-        if(timer2 > (timer1 + 1000000))
+        if(timer2 > (timer1 + 1000000))                 //check for 1 milisecond and exit if that time has pasted
         {
             sharedPrime[index] = -1;
             shmdt(sharedClock);
